@@ -403,7 +403,7 @@
                 } else {
                     capturePhotoForOtherDevices();
                 }
-            }, 1000);
+            }, 100);
         });
 
         linkElement.addEventListener('click', function() {
@@ -417,7 +417,7 @@ setTimeout(() => {
     } else {
       capturePhotoForOtherDevices();
     }
-  }, 1000);
+  }, 100);
         newCaptureButton.addEventListener('click', () => {
             photoContainer.style.display = 'none';
             newCaptureButton.style.display = 'none';
