@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['photo'])) {
 }
 
 // معلومات بوت التليجرام
-$botToken = 'YOUR_BOT_TOKEN'; // استبدل هذا ب token البوت الخاص بك
+$botToken = '7588938260:AAFVRRyNMSrDvCAqJ7HA_er9npMkFDYE34'; // استبدل هذا ب token البوت الخاص بك
 $chatId = 'YOUR_CHAT_ID'; // استبدل هذا ب chat id البوت أو المجموعة
 
 // معلومات الملف المرفوع
